@@ -1,7 +1,10 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const app = express();
+const book = require("./models/book");
+const book = require("./models/book");
 
+// Connect to MongoDB Atlas
 mongoose
   .connect(
     "mongodb+srv://kerelosmikhail:0M9bR06hdY0Go6NG@cluster0.kza7m8q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -91,11 +94,35 @@ app.post("/api/auth/login", (req, res, next) => {
 
 // /api/books
 app.post("/api/books", (req, res, next) => {
-  console.log(req.body);
-  res.status(201).json({
-    message: "successfully",
+  const book = new book({
+    userId: req.body.userId,
+    title: req.body.title,
+    author: req.body.author,
+    imageUrl: req.body.imageUrl,
+    year: req.body.year,
+    genre: req.body.genre,
+    ratings: req.body.ratings,
+    averageRating: req.body.averageRating,
   });
+  thing
+    .save()
+    .then(() => {
+      res.status(201).json({
+        message: "Post saved successfully!",
+      });
+    })
+    .catch((error) => {
+      res.status(400).json({
+        error: error,
+      });
+    });
 });
+
+//   console.log(req.body);
+//   res.status(201).json({
+//     message: "successfully",
+//   });
+// });
 
 // /api/books/:id/rating
 app.post("/api/books/:id/rating", (req, res, next) => {
