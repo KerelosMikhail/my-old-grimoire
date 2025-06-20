@@ -1,4 +1,7 @@
+require("dotenv").config();
+
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 
 exports.signup = (req, res, next) => {
@@ -33,9 +36,14 @@ exports.login = (req, res, next) => {
               error: new Error("Incorrect password!"),
             });
           }
+          // Generate JWT token
+          const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRATION,
+          });
+
           res.status(200).json({
             userId: user._id,
-            token: "token",
+            token: token,
           });
         })
         .catch((error) => {
