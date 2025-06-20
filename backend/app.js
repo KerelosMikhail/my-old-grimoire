@@ -36,7 +36,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post("/api/auth", userRoutes);
+app.use("/api/auth", userRoutes);
 
 app.use("/api/books", stuffRoutes);
 
