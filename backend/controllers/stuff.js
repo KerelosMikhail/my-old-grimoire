@@ -155,18 +155,26 @@ exports.modifyBook = (req, res, next) => {
 };
 
 exports.deleteBook = (req, res, next) => {
-  Book.deleteOne({ _id: req.params.id })
+  Book.findOne({ _id: req.params.id })
+    .then((book) => {
+      if (!book) {
+        return res.status(404).json({ error: "Book not found" });
+      }
+      // Check if the userId matches the book's userId
+      if (book.userId !== req.auth.userId) {
+        return res.status(403).json({ error: "Unauthorized request" });
+      }
+      // Delete the book
+      return Book.deleteOne({ _id: req.params.id });
+    })
     .then((result) => {
+      if (!result) return;
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: "Book not found" });
       }
-      res.status(200).json({
-        message: "Book deleted successfully!",
-      });
+      res.status(200).json({ message: "Book deleted successfully!" });
     })
     .catch((error) => {
-      res.status(400).json({
-        error: error.message || String(error),
-      });
+      res.status(400).json({ error: error.message || String(error) });
     });
 };
