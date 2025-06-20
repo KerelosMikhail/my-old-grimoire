@@ -16,7 +16,6 @@ mongoose
   .catch((error) => {
     console.log("Unable to connect");
   });
-//try: npm install mongodb')
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -40,12 +39,12 @@ app.get("/api/books", (req, res, next) => {
   Book.find()
     .then((books) => {
       // Returns an array of all books.
-      res.status(200).json(books);
+      res.status(200).json({ books });
     })
     .catch((error) => {
       // Handle error if books cannot be retrieved
       res.status(400).json({
-        error: error,
+        error: error.message || "Failed to retrieve books",
       });
     });
 });
@@ -57,15 +56,16 @@ app.get("/api/books/:id", (req, res, next) => {
       if (!book) {
         return res.status(404).json({ error: "Book not found" });
       }
-      res.status(200).json(book);
+      res.status(200).json({ book });
     })
     .catch((error) => {
       res.status(400).json({
-        error: error,
+        error: error.message || "Failed to retrieve this book",
       });
     });
 });
 
+// TODO
 // /api/books/bestrating
 app.get("/api/books/bestrating", (req, res, next) => {
   // Returns the book with the best rating.
@@ -79,6 +79,7 @@ app.get("/api/books/bestrating", (req, res, next) => {
   res.status(200).json(bestRatedBook);
 });
 
+// TODO
 // /api/auth/signup
 app.post("/api/auth/signup", (req, res, next) => {
   console.log(req.body);
@@ -87,6 +88,7 @@ app.post("/api/auth/signup", (req, res, next) => {
   });
 });
 
+// TODO
 // /api/auth/login
 app.post("/api/auth/login", (req, res, next) => {
   // Simulating a login
@@ -107,30 +109,48 @@ app.post("/api/auth/login", (req, res, next) => {
 
 // /api/books    ---> Done
 app.post("/api/books", (req, res, next) => {
+  const {
+    userId,
+    title,
+    author,
+    imageUrl,
+    year,
+    genre,
+    ratings,
+    averageRating,
+  } = req.body;
+  // Validate required fields
+  if (!userId || !title || !author || !imageUrl || !year || !genre) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
   const book = new Book({
-    userId: req.body.userId,
-    title: req.body.title,
-    author: req.body.author,
-    imageUrl: req.body.imageUrl,
-    year: req.body.year,
-    genre: req.body.genre,
-    ratings: req.body.ratings,
-    averageRating: req.body.averageRating,
+    userId,
+    title,
+    author,
+    imageUrl,
+    year,
+    genre,
+    ratings: ratings || [],
+    averageRating: averageRating || 0,
   });
+
   book
     .save()
-    .then(() => {
+    .then((savedBook) => {
       res.status(201).json({
-        message: "Post saved successfully!",
+        message: "Book saved successfully!",
+        book: savedBook,
       });
     })
     .catch((error) => {
       res.status(400).json({
-        error: error,
+        error: error.message || "Failed to save book",
       });
     });
 });
 
+// TODO
 // /api/books/:id/rating
 app.post("/api/books/:id/rating", (req, res, next) => {
   console.log(req.body);
@@ -141,41 +161,51 @@ app.post("/api/books/:id/rating", (req, res, next) => {
 
 // PUT /api/books/:id  ---> Done
 app.put("/api/books/:id", (req, res, next) => {
-  const book = new Book({
-    _id: req.params.id,
-    userId: req.body.userId,
-    title: req.body.title,
-    author: req.body.author,
-    imageUrl: req.body.imageUrl,
-    year: req.body.year,
-    genre: req.body.genre,
-    ratings: req.body.ratings,
-    averageRating: req.body.averageRating,
-  });
-  Book.updateOne({ _id: req.params.id }, book)
-    .then(() => {
-      res.status(201).json({
-        message: "Book updated successfully!",
-      });
+  const {
+    userId,
+    title,
+    author,
+    imageUrl,
+    year,
+    genre,
+    ratings,
+    averageRating,
+  } = req.body;
+
+  // Basic validation
+  if (!userId || !title || !author || !imageUrl || !year || !genre) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  Book.updateOne(
+    { _id: req.params.id },
+    { userId, title, author, imageUrl, year, genre, ratings, averageRating }
+  )
+    .then((result) => {
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: "Book not found" });
+      }
+      res.status(200).json({ message: "Book updated successfully!" });
     })
     .catch((error) => {
-      res.status(400).json({
-        error: error,
-      });
+      res.status(400).json({ error: error.message || String(error) });
     });
 });
 
 // DELETE /api/books/:id     ---> Done
 app.delete("/api/books/:id", (req, res, next) => {
   Book.deleteOne({ _id: req.params.id })
-    .then(() => {
+    .then((result) => {
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: "Book not found" });
+      }
       res.status(200).json({
         message: "Book deleted successfully!",
       });
     })
     .catch((error) => {
       res.status(400).json({
-        error: error,
+        error: error.message || String(error),
       });
     });
 });
