@@ -17,6 +17,16 @@ const bookSchema = mongoose.Schema({
   averageRating: { type: Number, default: 0, min: 0, max: 5 },
 });
 
+// In backend/models/book.js
+bookSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    delete ret._id;
+  },
+});
+
 module.exports = mongoose.model("Book", bookSchema);
 
 /*

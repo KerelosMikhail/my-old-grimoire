@@ -3,7 +3,7 @@ const router = express.Router();
 
 const auth = require("../middleware/auth");
 
-const stuffCtrl = require("../controllers/stuff");
+const stuffCtrl = require("../controllers/book");
 
 // Array of books /api/books    ---> Done
 router.get("/", stuffCtrl.getAllBooks);

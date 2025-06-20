@@ -6,7 +6,7 @@ const app = express();
 
 const uri = process.env.MONGODB_URI;
 
-const stuffRoutes = require("./routes/stuff");
+const bookRoutes = require("./routes/book");
 const userRoutes = require("./routes/user");
 
 // Connect to MongoDB Atlas
@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 
 app.use("/api/auth", userRoutes);
 
-app.use("/api/books", stuffRoutes);
+app.use("/api/books", bookRoutes);
 
 // Export the app for use in server.js
 module.exports = app;
