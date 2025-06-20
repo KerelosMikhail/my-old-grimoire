@@ -94,13 +94,40 @@ router.post("/", (req, res, next) => {
     });
 });
 
-// TODO
 // /api/books/:id/rating
-router.post("/:id/rating", (req, res, next) => {
-  console.log(req.body);
-  res.status(201).json({
-    message: "successfully",
-  });
+router.post("/:id/rating", async (req, res, next) => {
+  const { userId, rating } = req.body;
+
+  // Validate input
+  if (!userId || typeof rating !== "number" || rating < 0 || rating > 5) {
+    return res
+      .status(400)
+      .json({ error: "userId and rating (0-5) are required." });
+  }
+
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ error: "Book not found" });
+
+    // Prevent user from rating twice
+    if (book.ratings.some((r) => r.userId === userId)) {
+      return res
+        .status(400)
+        .json({ error: "User has already rated this book." });
+    }
+
+    // Add new rating
+    book.ratings.push({ userId, grade: rating });
+
+    // Update averageRating
+    const total = book.ratings.reduce((sum, r) => sum + r.grade, 0);
+    book.averageRating = total / book.ratings.length;
+
+    await book.save();
+    res.status(200).json(book);
+  } catch (error) {
+    res.status(400).json({ error: error.message || String(error) });
+  }
 });
 
 // PUT /api/books/:id  ---> Done   --> need work
