@@ -1,14 +1,15 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const app = express();
-const book = require("./models/book");
-const book = require("./models/book");
+const Book = require("./models/book");
+
+const uri = process.env.MONGODB_URI;
 
 // Connect to MongoDB Atlas
 mongoose
-  .connect(
-    "mongodb+srv://kerelosmikhail:0M9bR06hdY0Go6NG@cluster0.kza7m8q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-  )
+  .connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB Atlas");
   })
@@ -34,23 +35,35 @@ app.use((req, res, next) => {
   next();
 });
 
-// /api/books
+// /api/books    ---> Done
 app.get("/api/books", (req, res, next) => {
-  // Simulating a database query
-  const books = [
-    { id: 1, title: "1984", author: "George Orwell" },
-    { id: 2, title: "To Kill a Mockingbird", author: "Harper Lee" },
-    { id: 3, title: "The Great Gatsby", author: "F. Scott Fitzgerald" },
-  ];
-
-  res.status(200).json(books);
+  Book.find()
+    .then((books) => {
+      // Returns an array of all books.
+      res.status(200).json(books);
+    })
+    .catch((error) => {
+      // Handle error if books cannot be retrieved
+      res.status(400).json({
+        error: error,
+      });
+    });
 });
 
-//  /api/books/:id
+//  /api/books/:id     ---> Done
 app.get("/api/books/:id", (req, res, next) => {
-  // Returns the book with the provided _id.
-
-  res.status(200).json(bookId);
+  Book.findOne({ _id: req.params.id })
+    .then((book) => {
+      if (!book) {
+        return res.status(404).json({ error: "Book not found" });
+      }
+      res.status(200).json(book);
+    })
+    .catch((error) => {
+      res.status(400).json({
+        error: error,
+      });
+    });
 });
 
 // /api/books/bestrating
@@ -92,9 +105,9 @@ app.post("/api/auth/login", (req, res, next) => {
   });
 });
 
-// /api/books
+// /api/books    ---> Done
 app.post("/api/books", (req, res, next) => {
-  const book = new book({
+  const book = new Book({
     userId: req.body.userId,
     title: req.body.title,
     author: req.body.author,
@@ -104,7 +117,7 @@ app.post("/api/books", (req, res, next) => {
     ratings: req.body.ratings,
     averageRating: req.body.averageRating,
   });
-  thing
+  book
     .save()
     .then(() => {
       res.status(201).json({
@@ -118,12 +131,6 @@ app.post("/api/books", (req, res, next) => {
     });
 });
 
-//   console.log(req.body);
-//   res.status(201).json({
-//     message: "successfully",
-//   });
-// });
-
 // /api/books/:id/rating
 app.post("/api/books/:id/rating", (req, res, next) => {
   console.log(req.body);
@@ -132,21 +139,45 @@ app.post("/api/books/:id/rating", (req, res, next) => {
   });
 });
 
-// PUT /api/books/:id
+// PUT /api/books/:id  ---> Done
 app.put("/api/books/:id", (req, res, next) => {
-  console.log(req.body);
-  res.status(200).json({
-    message: "Book updated successfully",
+  const book = new Book({
+    _id: req.params.id,
+    userId: req.body.userId,
+    title: req.body.title,
+    author: req.body.author,
+    imageUrl: req.body.imageUrl,
+    year: req.body.year,
+    genre: req.body.genre,
+    ratings: req.body.ratings,
+    averageRating: req.body.averageRating,
   });
+  Book.updateOne({ _id: req.params.id }, book)
+    .then(() => {
+      res.status(201).json({
+        message: "Book updated successfully!",
+      });
+    })
+    .catch((error) => {
+      res.status(400).json({
+        error: error,
+      });
+    });
 });
 
-// DELETE /api/books/:id
+// DELETE /api/books/:id     ---> Done
 app.delete("/api/books/:id", (req, res, next) => {
-  const bookId = req.params.id;
-  console.log(`Book with ID ${bookId} deleted`);
-  res.status(200).json({
-    message: `Book with ID ${bookId} deleted successfully`,
-  });
+  Book.deleteOne({ _id: req.params.id })
+    .then(() => {
+      res.status(200).json({
+        message: "Book deleted successfully!",
+      });
+    })
+    .catch((error) => {
+      res.status(400).json({
+        error: error,
+      });
+    });
 });
 
 // Export the app for use in server.js
