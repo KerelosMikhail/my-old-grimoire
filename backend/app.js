@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
+const path = require("path");
 const app = express();
 
 const uri = process.env.MONGODB_URI;
@@ -39,6 +40,17 @@ app.use((req, res, next) => {
 app.use("/api/auth", userRoutes);
 
 app.use("/api/books", bookRoutes);
+
+app.use("/images", express.static(path.join(__dirname, "images")));
+
+// // Middleware to handle errors
+// app.use((error, req, res, next) => {
+//   const status = error.status || 500;
+//   const message = error.message || "An error occurred!";
+//   res.status(status).json({
+//     message: message,
+//   });
+// });
 
 // Export the app for use in server.js
 module.exports = app;

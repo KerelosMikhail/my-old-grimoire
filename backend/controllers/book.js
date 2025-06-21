@@ -1,10 +1,11 @@
 const Book = require("../models/book");
+const fs = require("fs");
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
     .then((books) => {
       // Returns an array of all books.
-      res.status(200).json({ books });
+      res.status(200).json(books);
     })
     .catch((error) => {
       // Handle error if books cannot be retrieved
@@ -20,7 +21,7 @@ exports.getBookById = (req, res, next) => {
       if (!book) {
         return res.status(404).json({ error: "Book not found" });
       }
-      res.status(200).json({ book });
+      res.status(200).json(book);
     })
     .catch((error) => {
       res.status(400).json({
@@ -46,45 +47,36 @@ exports.getBestRatedBooks = (req, res, next) => {
 };
 
 exports.createBook = (req, res, next) => {
-  const {
-    userId,
-    title,
-    author,
-    imageUrl,
-    year,
-    genre,
-    ratings,
-    averageRating,
-  } = req.body;
-  // Validate required fields
-  if (!userId || !title || !author || !imageUrl || !year || !genre) {
-    return res.status(400).json({ error: "All fields are required." });
+  let bookObject;
+  try {
+    bookObject = JSON.parse(req.body.book);
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid book data" });
   }
 
+  // Basic validation
+  if (!bookObject.title || !bookObject.author) {
+    return res.status(400).json({ error: "Title and author are required." });
+  }
+
+  const url = req.protocol + "://" + req.get("host");
+  const imageUrl = req.file ? url + "/images/" + req.file.filename : "";
+
   const book = new Book({
-    userId,
-    title,
-    author,
+    ...bookObject,
     imageUrl,
-    year,
-    genre,
-    ratings: ratings || [],
-    averageRating: averageRating || 0,
   });
 
   book
     .save()
-    .then((savedBook) => {
-      res.status(201).json({
-        message: "Book saved successfully!",
-        book: savedBook,
-      });
-    })
-    .catch((error) => {
-      res.status(400).json({
-        error: error.message || "Failed to save book",
-      });
-    });
+    .then((savedBook) =>
+      res
+        .status(201)
+        .json({ message: "Book saved successfully!", book: savedBook })
+    )
+    .catch((error) =>
+      res.status(400).json({ error: error.message || String(error) })
+    );
 };
 
 exports.rateBook = async (req, res, next) => {
@@ -123,31 +115,41 @@ exports.rateBook = async (req, res, next) => {
 };
 
 exports.modifyBook = (req, res, next) => {
-  const {
-    userId,
-    title,
-    author,
-    imageUrl,
-    year,
-    genre,
-    ratings,
-    averageRating,
-  } = req.body;
-
-  // Basic validation
-  if (!userId || !title || !author || !imageUrl || !year || !genre) {
-    return res.status(400).json({ error: "All fields are required." });
+  if (req.file) {
+    let bookObject;
+    try {
+      bookObject = JSON.parse(req.body.book);
+      const url = req.protocol + "://" + req.get("host");
+      const imageUrl = req.file ? url + "/images/" + req.file.filename : "";
+    } catch (err) {
+      return res.status(400).json({ error: "Invalid book data" });
+    }
+  } else {
+    bookObject = req.body;
   }
 
-  Book.updateOne(
-    { _id: req.params.id },
-    { userId, title, author, imageUrl, year, genre, ratings, averageRating }
-  )
-    .then((result) => {
-      if (result.matchedCount === 0) {
+  // Prevent userId from being changed
+  delete bookObject.userId;
+
+  Book.findById(req.params.id)
+    .then((book) => {
+      if (!book) {
         return res.status(404).json({ error: "Book not found" });
       }
-      res.status(200).json({ message: "Book updated successfully!" });
+      if (book.userId !== req.auth.userId) {
+        return res.status(403).json({ error: "Unauthorized request" });
+      }
+      return Book.findByIdAndUpdate(
+        req.params.id,
+        { ...bookObject },
+        { new: true, runValidators: true }
+      );
+    })
+    .then((updatedBook) => {
+      if (updatedBook) {
+        res.status(200).json(updatedBook);
+      }
+      // If previous block returned a response, do nothing
     })
     .catch((error) => {
       res.status(400).json({ error: error.message || String(error) });
@@ -155,16 +157,24 @@ exports.modifyBook = (req, res, next) => {
 };
 
 exports.deleteBook = (req, res, next) => {
-  Book.findOne({ _id: req.params.id })
+  Book.findById(req.params.id)
     .then((book) => {
       if (!book) {
         return res.status(404).json({ error: "Book not found" });
       }
-      // Check if the userId matches the book's userId
+      // Check if the userId matches the book's userId (Only the owner can delete)
       if (book.userId !== req.auth.userId) {
         return res.status(403).json({ error: "Unauthorized request" });
       }
-      // Delete the book
+      // If the book has an image, delete it from the filesystem
+      if (book.imageUrl) {
+        const filename = book.imageUrl.split("/images/")[1];
+        fs.unlink(`images/${filename}`, (err) => {
+          if (err) {
+            console.error("Failed to delete image:", err);
+          }
+        });
+      }
       return Book.deleteOne({ _id: req.params.id });
     })
     .then((result) => {
