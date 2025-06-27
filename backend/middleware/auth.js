@@ -3,26 +3,33 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
   try {
-    const token = req.headers.authorization.split(" ")[1];
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decodedToken.userId;
-    req.auth = { userId };
-    // Check if the userId in the request body matches the userId in the token
-    if (!userId) {
-      throw "User ID not found in token";
-    }
-    if (!decodedToken) {
-      throw "Invalid token";
-    }
-    if (!token) {
-      throw "No token provided";
+    // Get the Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(403).json({ error: "No authorization header" });
     }
 
-    if (req.body.userId && req.body.userId !== userId) {
-      throw "User ID mismatch";
-    } else {
-      next();
+    // Extract the token
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(403).json({ error: "No token provided" });
     }
+
+    // Verify the token
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decodedToken || !decodedToken.userId) {
+      return res.status(403).json({ error: "Invalid token" });
+    }
+
+    // Attach userId to request for later use
+    req.auth = { userId: decodedToken.userId };
+
+    // Optional: Prevent userId spoofing in body (for JSON requests)
+    if (req.body.userId && req.body.userId !== decodedToken.userId) {
+      return res.status(403).json({ error: "User ID mismatch" });
+    }
+
+    next();
   } catch (error) {
     res.status(403).json({ error: "Unauthorized request" });
   }
