@@ -1,27 +1,7 @@
-const fs = require("fs");
 const multer = require("multer");
 const path = require("path");
 
-const imagesDir = "images";
-if (!fs.existsSync(imagesDir)) {
-  fs.mkdirSync(imagesDir);
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    callback(null, imagesDir);
-  },
-  filename: (req, file, callback) => {
-    const name =
-      file.fieldname.split(" ").join("_") +
-      "-" +
-      Date.now() +
-      path.extname(file.originalname);
-    callback(null, name);
-  },
-});
-
-const fileFilter = (req, file, callback) => {
+const fileFilter = (req, file, cb) => {
   const allowedExt = [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".webp", ".svg"];
   const allowedMime = [
     "image/jpeg",
@@ -41,4 +21,8 @@ const fileFilter = (req, file, callback) => {
   }
 };
 
-module.exports = multer({ storage, fileFilter }).single("image");
+module.exports = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+}).single("image");
