@@ -1,5 +1,7 @@
 const Book = require("../models/book");
 const fs = require("fs");
+const sharp = require("sharp");
+const path = require("path");
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
@@ -46,7 +48,7 @@ exports.getBestRatedBooks = (req, res, next) => {
     });
 };
 
-exports.createBook = (req, res, next) => {
+exports.createBook = async (req, res, next) => {
   let bookObject;
   try {
     bookObject = JSON.parse(req.body.book);
@@ -59,8 +61,33 @@ exports.createBook = (req, res, next) => {
     return res.status(400).json({ error: "Title and author are required." });
   }
 
-  const url = req.protocol + "://" + req.get("host");
-  const imageUrl = req.file ? url + "/images/" + req.file.filename : "";
+  // Prevent userId from being set by the client
+  bookObject.userId = req.auth.userId;
+
+  let imageUrl = "";
+  if (req.file) {
+    try {
+      // Ensure images directory exists
+      const imagesDir = "images";
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir);
+      }
+      // Generate a unique filename
+      const filename = `image-${Date.now()}.jpeg`;
+      const outputPath = path.join(imagesDir, filename);
+
+      // Compress and save the image using Sharp
+      await sharp(req.file.buffer)
+        .resize(500) // Optional: resize width to 500px
+        .jpeg({ quality: 70 }) // Compress JPEG to 70% quality
+        .toFile(outputPath);
+
+      const url = req.protocol + "://" + req.get("host");
+      imageUrl = `${url}/images/${filename}`;
+    } catch (err) {
+      return res.status(500).json({ error: "Image processing failed" });
+    }
+  }
 
   const book = new Book({
     ...bookObject,
