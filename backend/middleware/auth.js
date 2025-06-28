@@ -24,7 +24,7 @@ module.exports = (req, res, next) => {
     // Attach userId to request for later use
     req.auth = { userId: decodedToken.userId };
 
-    // Optional: Prevent userId spoofing in body (for JSON requests)
+    // Prevent userId spoofing in body (for JSON requests)
     if (req.body.userId && req.body.userId !== decodedToken.userId) {
       return res.status(403).json({ error: "User ID mismatch" });
     }
