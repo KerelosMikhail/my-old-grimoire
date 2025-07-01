@@ -50,16 +50,16 @@ exports.getBestRatedBooks = (req, res, next) => {
 
 exports.createBook = async (req, res, next) => {
   // Log incoming data for debugging
-  console.log("req.body:", req.body);
-  console.log("req.body.book:", req.body.book);
-  console.log("req.file:", req.file);
+  // console.log("req.body:", req.body);
+  // console.log("req.body.book:", req.body.book);
+  // console.log("req.file:", req.file);
 
   let bookObject;
   try {
     // Parse the book object from the form data
     bookObject = JSON.parse(req.body.book);
 
-    console.log("bookObject:", bookObject);
+    // console.log("bookObject:", bookObject);
 
     // Always set the userId from the authenticated user
     bookObject.userId = req.auth.userId;
@@ -73,14 +73,6 @@ exports.createBook = async (req, res, next) => {
       bookObject.ratings = [];
     }
 
-    // If there is at least one rating, set its userId to the creator
-    // if (bookObject.ratings.length > 0) {
-    //   bookObject.ratings = bookObject.ratings.map((rating) => ({
-    //     ...rating,
-    //     userId: req.auth.userId,
-    //   }));
-    // }
-
     if (Array.isArray(bookObject.ratings) && bookObject.ratings.length > 0) {
       const first = bookObject.ratings[0];
       if (typeof first.grade === "number" && !isNaN(first.grade)) {
@@ -89,11 +81,6 @@ exports.createBook = async (req, res, next) => {
         bookObject.ratings = [];
       }
     }
-
-    // // Add userId to the initial rating if ratings exist
-    // if (bookObject.ratings && bookObject.ratings.length > 0) {
-    //   bookObject.ratings[0].userId = req.auth.userId;
-    // }
   } catch (err) {
     console.error("Book creation error in try block:", err);
     return res.status(400).json({ error: "Invalid book data" });
@@ -136,7 +123,7 @@ exports.createBook = async (req, res, next) => {
     imageUrl,
   });
 
-  console.log("Final bookObject before save:", bookObject);
+  // console.log("Final bookObject before save:", bookObject);
 
   // Save the book to the database
   book
@@ -147,7 +134,6 @@ exports.createBook = async (req, res, next) => {
         .json({ message: "Book saved successfully!", book: savedBook })
     )
     .catch((error) => {
-      console.error("Book save error:", error);
       res.status(400).json({ error: error.message || String(error) });
     });
 };

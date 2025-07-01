@@ -136,12 +136,7 @@ export async function addBook(data) {
   const bodyFormData = new FormData();
   bodyFormData.append("book", JSON.stringify(book));
   bodyFormData.append("image", data.file[0]);
-
-  console.log("FormData content:");
-for (let pair of bodyFormData.entries()) {
-  console.log(pair[0], pair[1]);
-}
-
+  
   try {
     return await axios({
       method: "post",
@@ -168,7 +163,7 @@ export async function updateBook(data, id) {
     year: data.year,
     genre: data.genre,
   };
-  console.log(data.file[0]);
+  // console.log(data.file[0]);
   if (data.file[0]) {
     newData = new FormData();
     newData.append("book", JSON.stringify(book));

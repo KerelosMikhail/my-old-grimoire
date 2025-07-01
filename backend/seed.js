@@ -15,10 +15,10 @@ const booksToInsert = books.map(({ id, ...rest }) => rest);
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(async () => {
-    console.log("Connected to MongoDB. Seeding data...");
+    // console.log("Connected to MongoDB. Seeding data...");
     await Book.deleteMany({}); // Optional: clear existing books
     await Book.insertMany(booksToInsert);
-    console.log("Database seeded successfully!");
+    // console.log("Database seeded successfully!");
     process.exit();
   })
   .catch((err) => {
