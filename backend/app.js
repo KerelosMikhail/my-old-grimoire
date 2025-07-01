@@ -43,14 +43,5 @@ app.use("/api/books", bookRoutes);
 
 app.use("/images", express.static(path.join(__dirname, "images")));
 
-// // Middleware to handle errors
-// app.use((error, req, res, next) => {
-//   const status = error.status || 500;
-//   const message = error.message || "An error occurred!";
-//   res.status(status).json({
-//     message: message,
-//   });
-// });
-
 // Export the app for use in server.js
 module.exports = app;

@@ -6,25 +6,25 @@ const multer = require("../middleware/multer-config");
 
 const bookCtrl = require("../controllers/book");
 
-// Array of books /api/books    ---> Done
+// Array of books /api/books    
 router.get("/", bookCtrl.getAllBooks);
 
-// Array of books /api/books/bestrating     ---> Done
+// Array of books /api/books/bestrating     
 router.get("/bestrating", bookCtrl.getBestRatedBooks);
 
-// Single book /api/books/:id     ---> Done
+// Single book /api/books/:id    
 router.get("/:id", bookCtrl.getBookById);
 
-// /api/books    ---> Done
+// /api/books    
 router.post("/", auth, multer, bookCtrl.createBook);
 
-// /api/books/:id/rating ---> Done
+// /api/books/:id/rating 
 router.post("/:id/rating", auth, bookCtrl.rateBook);
 
-// PUT /api/books/:id  ---> Done
+// PUT /api/books/:id  
 router.put("/:id", auth, multer, bookCtrl.modifyBook);
 
-// DELETE /api/books/:id     ---> Done
+// DELETE /api/books/:id    
 router.delete("/:id", auth, bookCtrl.deleteBook);
 
 module.exports = router;
