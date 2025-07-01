@@ -119,16 +119,15 @@ export async function rateBook(id, userId, rating) {
 }
 
 export async function addBook(data) {
-  const userId = localStorage.getItem("userId");
+  // const userId = localStorage.getItem("userId");
   const book = {
-    userId,
     title: data.title,
     author: data.author,
     year: data.year,
     genre: data.genre,
     ratings: [
       {
-        userId,
+        //userId: localStorage.getItem("userId"),
         grade: data.rating ? parseInt(data.rating, 10) : 0,
       },
     ],
@@ -137,6 +136,11 @@ export async function addBook(data) {
   const bodyFormData = new FormData();
   bodyFormData.append("book", JSON.stringify(book));
   bodyFormData.append("image", data.file[0]);
+
+  console.log("FormData content:");
+for (let pair of bodyFormData.entries()) {
+  console.log(pair[0], pair[1]);
+}
 
   try {
     return await axios({
@@ -154,11 +158,11 @@ export async function addBook(data) {
 }
 
 export async function updateBook(data, id) {
-  const userId = localStorage.getItem("userId");
-
+  // const userId = localStorage.getItem("userId");
+  // ToDo
   let newData;
   const book = {
-    userId,
+    //   userId,
     title: data.title,
     author: data.author,
     year: data.year,

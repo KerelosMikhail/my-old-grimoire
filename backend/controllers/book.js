@@ -49,51 +49,96 @@ exports.getBestRatedBooks = (req, res, next) => {
 };
 
 exports.createBook = async (req, res, next) => {
+  // Log incoming data for debugging
+  console.log("req.body:", req.body);
+  console.log("req.body.book:", req.body.book);
+  console.log("req.file:", req.file);
+
   let bookObject;
   try {
+    // Parse the book object from the form data
     bookObject = JSON.parse(req.body.book);
+
+    console.log("bookObject:", bookObject);
+
+    // Always set the userId from the authenticated user
+    bookObject.userId = req.auth.userId;
+
+    // Ensure ratings is an array
+    if (
+      !bookObject.ratings ||
+      !Array.isArray(bookObject.ratings) ||
+      bookObject.ratings.length === 0
+    ) {
+      bookObject.ratings = [];
+    }
+
+    // If there is at least one rating, set its userId to the creator
+    // if (bookObject.ratings.length > 0) {
+    //   bookObject.ratings = bookObject.ratings.map((rating) => ({
+    //     ...rating,
+    //     userId: req.auth.userId,
+    //   }));
+    // }
+
+    if (Array.isArray(bookObject.ratings) && bookObject.ratings.length > 0) {
+      const first = bookObject.ratings[0];
+      if (typeof first.grade === "number" && !isNaN(first.grade)) {
+        bookObject.ratings = [{ ...first, userId: req.auth.userId }];
+      } else {
+        bookObject.ratings = [];
+      }
+    }
+
+    // // Add userId to the initial rating if ratings exist
+    // if (bookObject.ratings && bookObject.ratings.length > 0) {
+    //   bookObject.ratings[0].userId = req.auth.userId;
+    // }
   } catch (err) {
+    console.error("Book creation error in try block:", err);
     return res.status(400).json({ error: "Invalid book data" });
   }
 
   // Basic validation
   if (!bookObject.title || !bookObject.author) {
+    console.error("Book creation error: Missing title or author");
+
     return res.status(400).json({ error: "Title and author are required." });
   }
 
-  // Prevent userId from being set by the client
-  bookObject.userId = req.auth.userId;
-
+  // Handle image upload and processing
   let imageUrl = "";
   if (req.file) {
     try {
-      // Ensure images directory exists
       const imagesDir = "images";
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir);
       }
-      // Generate a unique filename
       const filename = `image-${Date.now()}.jpeg`;
       const outputPath = path.join(imagesDir, filename);
 
-      // Compress and save the image using Sharp
       await sharp(req.file.buffer)
-        .resize(500) // Optional: resize width to 500px
-        .jpeg({ quality: 70 }) // Compress JPEG to 70% quality
+        .resize(500)
+        .jpeg({ quality: 70 })
         .toFile(outputPath);
 
       const url = req.protocol + "://" + req.get("host");
       imageUrl = `${url}/images/${filename}`;
     } catch (err) {
+      console.error("Image processing error:", err);
       return res.status(500).json({ error: "Image processing failed" });
     }
   }
 
+  // Create the Book instance
   const book = new Book({
     ...bookObject,
     imageUrl,
   });
 
+  console.log("Final bookObject before save:", bookObject);
+
+  // Save the book to the database
   book
     .save()
     .then((savedBook) =>
@@ -101,9 +146,10 @@ exports.createBook = async (req, res, next) => {
         .status(201)
         .json({ message: "Book saved successfully!", book: savedBook })
     )
-    .catch((error) =>
-      res.status(400).json({ error: error.message || String(error) })
-    );
+    .catch((error) => {
+      console.error("Book save error:", error);
+      res.status(400).json({ error: error.message || String(error) });
+    });
 };
 
 exports.rateBook = async (req, res, next) => {
@@ -141,46 +187,92 @@ exports.rateBook = async (req, res, next) => {
   }
 };
 
-exports.modifyBook = (req, res, next) => {
-  if (req.file) {
-    let bookObject;
-    try {
+exports.modifyBook = async (req, res, next) => {
+  let bookObject;
+  let imageUrl;
+
+  try {
+    // Parse book object from form data if a file is uploaded, else use req.body directly
+    if (req.file) {
       bookObject = JSON.parse(req.body.book);
+
+      // Handle new image upload
+      const imagesDir = "images";
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir);
+      }
+      const filename = `image-${Date.now()}.jpeg`;
+      const outputPath = path.join(imagesDir, filename);
+
+      await sharp(req.file.buffer)
+        .resize(500)
+        .jpeg({ quality: 70 })
+        .toFile(outputPath);
+
       const url = req.protocol + "://" + req.get("host");
-      const imageUrl = req.file ? url + "/images/" + req.file.filename : "";
-    } catch (err) {
-      return res.status(400).json({ error: "Invalid book data" });
+      imageUrl = `${url}/images/${filename}`;
+    } else {
+      bookObject = req.body;
     }
-  } else {
-    bookObject = req.body;
+  } catch (err) {
+    console.error("Book modification error in try block:", err);
+    return res.status(400).json({ error: "Invalid book data" });
   }
 
-  // Prevent userId from being changed
+  // Prevent userId spoofing
   delete bookObject.userId;
 
-  Book.findById(req.params.id)
-    .then((book) => {
-      if (!book) {
-        return res.status(404).json({ error: "Book not found" });
-      }
-      if (book.userId !== req.auth.userId) {
-        return res.status(403).json({ error: "Unauthorized request" });
-      }
-      return Book.findByIdAndUpdate(
-        req.params.id,
-        { ...bookObject },
-        { new: true, runValidators: true }
-      );
-    })
-    .then((updatedBook) => {
-      if (updatedBook) {
-        res.status(200).json(updatedBook);
-      }
-      // If previous block returned a response, do nothing
-    })
-    .catch((error) => {
-      res.status(400).json({ error: error.message || String(error) });
-    });
+  // Ensure ratings is an array and set userId for all ratings
+  if (!Array.isArray(bookObject.ratings)) {
+    bookObject.ratings = [];
+  } else if (bookObject.ratings.length > 0) {
+    // Only keep ratings with a valid grade and set userId
+    bookObject.ratings = bookObject.ratings
+      .filter((r) => typeof r.grade === "number" && !isNaN(r.grade))
+      .map((rating) => ({
+        ...rating,
+        userId: req.auth.userId,
+      }));
+  }
+
+  try {
+    // Find the book to update
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+    // Only the owner can modify
+    if (book.userId !== req.auth.userId) {
+      return res.status(403).json({ error: "Unauthorized request" });
+    }
+
+    // If a new image is uploaded, remove the old image file
+    if (imageUrl && book.imageUrl) {
+      const oldFilename = book.imageUrl.split("/images/")[1];
+      fs.unlink(`images/${oldFilename}`, (err) => {
+        if (err) {
+          console.error("Failed to delete old image:", err);
+        }
+      });
+    }
+
+    // Update the book
+    const updatedBook = await Book.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...bookObject,
+        ...(imageUrl ? { imageUrl } : {}),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (updatedBook) {
+      res.status(200).json(updatedBook);
+    }
+  } catch (error) {
+    console.error("Book modification error:", error);
+    res.status(400).json({ error: error.message || String(error) });
+  }
 };
 
 exports.deleteBook = (req, res, next) => {

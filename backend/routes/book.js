@@ -9,11 +9,11 @@ const bookCtrl = require("../controllers/book");
 // Array of books /api/books    ---> Done
 router.get("/", bookCtrl.getAllBooks);
 
-// Single book /api/books/:id     ---> Done
-router.get("/:id", bookCtrl.getBookById);
-
 // Array of books /api/books/bestrating     ---> Done
 router.get("/bestrating", bookCtrl.getBestRatedBooks);
+
+// Single book /api/books/:id     ---> Done
+router.get("/:id", bookCtrl.getBookById);
 
 // /api/books    ---> Done
 router.post("/", auth, multer, bookCtrl.createBook);
